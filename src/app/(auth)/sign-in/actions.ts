@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getDemoUserById, toAuthSession } from "@/lib/auth/demo-users";
 import { verifyPassword } from "@/lib/auth/passwords";
 import { isRateLimited } from "@/lib/auth/rate-limit";
-import { isRoleKey } from "@/lib/auth/roles";
+import { isRoleKey, type RoleKey } from "@/lib/auth/roles";
 import { setCurrentSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 
@@ -19,6 +19,26 @@ function safeRedirectPath(value: FormDataEntryValue | null, fallback: string) {
   }
 
   return fallback;
+}
+
+function defaultPathForRoles(roles: RoleKey[]) {
+  if (roles.includes("SUPER_ADMIN") || roles.includes("PLATFORM_ADMIN")) {
+    return "/admin";
+  }
+
+  if (roles.includes("COURSE_CREATOR")) {
+    return "/creator";
+  }
+
+  if (roles.includes("COURSE_REVIEWER")) {
+    return "/admin/review";
+  }
+
+  if (roles.includes("ME_VIEWER")) {
+    return "/admin/monitoring";
+  }
+
+  return "/learn";
 }
 
 export async function signInDemoUser(formData: FormData) {
@@ -80,7 +100,6 @@ export async function signInDemoUser(formData: FormData) {
 export async function signInWithPassword(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
-  const nextPath = safeRedirectPath(formData.get("next"), "/learn");
 
   if (typeof email !== "string" || typeof password !== "string") {
     redirect("/sign-in?error=missing-credentials");
@@ -123,6 +142,8 @@ export async function signInWithPassword(formData: FormData) {
   if (roles.length === 0) {
     redirect("/sign-in?error=inactive-user");
   }
+
+  const nextPath = safeRedirectPath(formData.get("next"), defaultPathForRoles(roles));
 
   await setCurrentSession({
     email: dbUser.email,
