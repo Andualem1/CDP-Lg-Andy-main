@@ -8,14 +8,22 @@ import {
   parseSessionCookieValue,
   type AuthSession,
 } from "./session-codec";
+import { shouldUseSecureCookies } from "../app-url";
 
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NEXT_PUBLIC_APP_URL?.startsWith("https://") ?? false,
-  path: "/",
-  maxAge: 60 * 60 * 8,
-};
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
+
+function getCookieOptions() {
+  const secure = shouldUseSecureCookies();
+
+  return {
+    httpOnly: true,
+    sameSite: secure ? ("none" as const) : ("lax" as const),
+    secure,
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    expires: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000),
+  };
+}
 
 export async function getCurrentSession() {
   const globalMock = (globalThis as unknown as { __mockSession?: AuthSession }).__mockSession;
@@ -39,11 +47,15 @@ export async function setCurrentSession(session: AuthSession) {
     getSessionSecret(),
   );
 
-  cookieStore.set(AUTH_COOKIE_NAME, cookieValue, cookieOptions);
+  cookieStore.set(AUTH_COOKIE_NAME, cookieValue, getCookieOptions());
 }
 
 export async function clearCurrentSession() {
   const cookieStore = await cookies();
 
-  cookieStore.delete(AUTH_COOKIE_NAME);
+  cookieStore.set(AUTH_COOKIE_NAME, "", {
+    ...getCookieOptions(),
+    expires: new Date(0),
+    maxAge: 0,
+  });
 }

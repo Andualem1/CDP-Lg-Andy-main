@@ -1380,7 +1380,7 @@ export async function createAdminUser(
     return { code: "invalid-role", success: false };
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const [existingUser, role, organization, cohort] = await Promise.all([
       tx.user.findUnique({
         select: { id: true },
@@ -1482,34 +1482,47 @@ export async function createAdminUser(
       success: true,
       userId: user.id,
     };
-  }).then(async (result) => {
-    if (!result.success || input.status !== UserStatus.INVITED) {
-      return result;
-    }
+  });
 
-    const invitationResult = await inviteStaffMember({
-      email,
+  if (!result.success || input.status !== UserStatus.INVITED) {
+    return result;
+  }
+
+  const token = createInvitationToken();
+  const tokenHash = hashInvitationToken(token);
+  const expiresAt = createInvitationExpiry();
+
+  try {
+    await persistStaffInvitation({
+      actorUserId: actor.id,
+      cleanEmail: email,
+      expiresAt,
       roleKey: input.roleKey,
-      session: input.session,
+      tokenHash,
     });
-
-    if (!invitationResult.success) {
-      return {
-        ...result,
-        code: invitationResult.code,
-        success: false,
-      };
-    }
-
+  } catch (error) {
+    console.error("Failed to create invitation for new user", error);
     return {
       ...result,
-      code:
-        invitationResult.code === "invitation-created"
-          ? "user-created-invitation-sent"
-          : invitationResult.code,
-      invitationUrl: invitationResult.invitationUrl,
+      code: "database-error",
+      success: false,
     };
+  }
+
+  const invitationUrl = buildStaffRegistrationUrl(token);
+  const delivery = await deliverStaffInvitationEmail({
+    email,
+    invitationUrl,
   });
+
+  return {
+    ...result,
+    code:
+      delivery.code === "invitation-created"
+        ? "user-created-invitation-sent"
+        : delivery.code,
+    invitationUrl,
+  };
 }
 
 export async function updateAdminUserStatus({

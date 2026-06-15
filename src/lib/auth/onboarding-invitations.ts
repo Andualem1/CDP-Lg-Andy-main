@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { getAppBaseUrl } from "../app-url";
 
 export const INVITATION_TTL_HOURS = 48;
 
@@ -15,9 +16,5 @@ export function createInvitationExpiry() {
 }
 
 export function buildStaffRegistrationUrl(token: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const base = appUrl && appUrl.startsWith("http") ? appUrl : "http://localhost:3000";
-  const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
-
-  return `${normalizedBase}/register/staff?token=${encodeURIComponent(token)}`;
+  return `${getAppBaseUrl()}/register/staff?token=${encodeURIComponent(token)}`;
 }
