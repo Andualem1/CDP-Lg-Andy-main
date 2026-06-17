@@ -17,7 +17,7 @@ function getCookieOptions() {
 
   return {
     httpOnly: true,
-    sameSite: secure ? ("none" as const) : ("lax" as const),
+    sameSite: "lax" as const,
     secure,
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
