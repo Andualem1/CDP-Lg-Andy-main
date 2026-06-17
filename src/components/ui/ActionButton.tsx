@@ -14,6 +14,7 @@ type ActionButtonLinkProps = ActionButtonBaseProps &
   Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "className" | "href"> & {
     disabled?: boolean;
     href: string;
+    prefetch?: boolean;
   };
 
 type ActionButtonElementProps = ActionButtonBaseProps &
@@ -71,6 +72,7 @@ function ActionButtonLink({
   disabled = false,
   href,
   loading = false,
+  prefetch,
   size = "md",
   variant = "primary",
   ...anchorProps
@@ -87,6 +89,7 @@ function ActionButtonLink({
           "pointer-events-none border-design-border bg-soft-bg text-muted-text shadow-none",
       )}
       href={href}
+      prefetch={href === "/sign-out" ? false : prefetch}
       tabIndex={disabled || loading ? -1 : anchorProps.tabIndex}
     >
       {loading ? "Working..." : children}
